@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bnc-sdk": "^3.3.3",
     "discord.js": "^12.5.2",
     "dotenv": "^8.2.0",
     "node-fetch": "^2.6.1",
