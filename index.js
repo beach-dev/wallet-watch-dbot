@@ -22,20 +22,10 @@ const client = new Discord.Client({
     partials: ['MESSAGE ']
 });
 
-const startWatch = async (address) => {
+const startWatch = (address) => {
 
-    var config = {
-        scope: address,
-        watchAddress: true
-      };
+    const { emitter } = blocknative.account(address)
     
-    const {
-        emitter, // emitter object to listen for status updates
-        details // initial account details which are useful for internal tracking: address
-      } = await blocknative.configuration(config);
-    
-    
-    // catch every other event that occurs and log it
     emitter.on('all', transaction => {
         console.log(`Transaction event: ${transaction.eventCode}`)
     })
@@ -73,4 +63,5 @@ client.on("message", msg => {
 client.login(process.env.BOT_TOKEN)
 
 
-// startWatch('0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F')
+// startWatch('0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F') // z3
+// startWatch('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2') // etherscan
