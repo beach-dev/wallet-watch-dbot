@@ -3,6 +3,9 @@ const fetch = require('node-fetch')
 const BlocknativeSdk = require('bnc-sdk');
 const WebSocket = require('ws');
 
+const INTERVAL = process.env.INTERVAL || 2000;
+const networkId = process.env.NETWORK_ID || '1';
+
 // blocknative initialize
 
 var addresses = [];
@@ -10,7 +13,7 @@ var labels = [];
 
 const options = {
     dappId: process.env.DAPP_ID,
-    networkId: 56,
+    networkId: parseInt(networkId),
     system: 'ethereum', // optional, defaults to ethereum
     ws: WebSocket, // only neccessary in server environments
     name: 'Mempool Explorer' // optional, use when running multiple instances
@@ -43,19 +46,33 @@ const startWatch = (address, label, channel) => {
 
     const { emitter } = blocknative.account(address)
     
-    emitter.on('all', transaction => {
+    emitter.on('txConfirmed', transaction => {
 
-        var log = `Transaction event: ${transaction.eventCode}`;
-        console.log(log);
+        var tx = {
+            hash: `[${transaction.hash}](https://bscscan.com/tx/${transaction.hash})`,
+            from: `[${transaction.from}](https://bscscan.com/address/${transaction.from})`,
+            to: `[${transaction.to}](https://bscscan.com/address/${transaction.to})`,
+            value: transaction.value,
+            // input: transaction.input
+        };
+        var log = JSON.stringify(tx, null, 4);
+        console.log(transaction);
 
-        lastlog += log + '\n';
+        // lastlog += log + '\n';
 
-        var currentTime = new Date().getTime();
-        if (currentTime - lasttime > 2000) {
-            channel.send(lastlog);
-            lastlog = '';
-            lasttime = currentTime;
-        }
+        // var currentTime = new Date().getTime();
+        // if (currentTime - lasttime > INTERVAL) {
+            
+        //     const embed = new Discord.MessageEmbed()
+        //     .setDescription(lastlog);
+        //     channel.send(embed);
+        //     lastlog = '';
+        //     lasttime = currentTime;
+        // }
+        
+        const embed = new Discord.MessageEmbed()
+        .setDescription(log);
+        channel.send(embed);
     })
 }
 
@@ -107,6 +124,10 @@ client.on("message", msg => {
     if (msg.content === "!watch-test") {
 
         msg.reply("I'm here!");
+        const embed = new Discord.MessageEmbed()
+        .setDescription('[Link text](http://example.com)');
+        msg.channel.send(embed)
+        // msg.channel.send('[Link text](http://example.com)')
     } 
     else if (msg.content.startsWith("!watch ")) { 
 
