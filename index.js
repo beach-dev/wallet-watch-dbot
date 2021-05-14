@@ -60,6 +60,7 @@ client.on("message", msg => {
         console.log("!!! start watch");
 
         wallet = msg.content.substring(10);
+        msg.channel.send(wallet);
         startWatch();
     } 
     else if (msg.content === "$$$stop$$$") { 
