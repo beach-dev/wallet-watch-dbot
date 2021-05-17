@@ -43,6 +43,7 @@ const startWatch = (address, label, channel) => {
     }
     
     var index = addresses.push(address) - 1;
+    label = label ? label : '';
     labels[index] = label;
 
     const { emitter } = blocknative.account(address)
@@ -50,6 +51,7 @@ const startWatch = (address, label, channel) => {
     emitter.on('txConfirmed', transaction => {
 
         var tx = {
+            name: label,
             hash: `[${transaction.hash}](${explorerLink}/tx/${transaction.hash})`,
             from: `[${transaction.from}](${explorerLink}/address/${transaction.from})`,
             to: `[${transaction.to}](${explorerLink}/address/${transaction.to})`,
@@ -117,6 +119,18 @@ const stopWatchByLabel = (label, channel) => {
     addresses.splice(index, 1);
 }
 
+const showWatchList = (channel) => {
+
+    log = 'Watch List';
+    for (var i = 0; i < addresses.length; i++) {
+        log += addresses[i] + '\t ' + labels[i] + '\n';
+    }
+    
+    const embed = new Discord.MessageEmbed()
+    .setDescription(log);
+    channel.send(embed);
+}
+
 client.on("ready", () => {
     console.log("Watch Bot is ready")
 })
@@ -129,27 +143,32 @@ client.on("message", msg => {
         .setDescription('[Link text](http://example.com)');
         msg.channel.send(embed)
         // msg.channel.send('[Link text](http://example.com)')
-    } 
+    }
     else if (msg.content.startsWith("!watch ")) { 
 
         console.log("!!! start watch");
 
         parts = msg.content.split(' ');
         startWatch(parts[1], parts[2], msg.channel);
-    } 
+    }
     else if (msg.content.startsWith("!stopl ")) { 
         
         console.log("!!! stop watch by label");
         
         parts = msg.content.split(' ');
         stopWatchByLabel(parts[1], msg.channel);
-    } 
+    }
     else if (msg.content.startsWith("!stopa ")) { 
         
         console.log("!!! stop watch by address");
         
         parts = msg.content.split(' ');
         stopWatchByAddress(parts[1], msg.channel);
+    }
+    else if (msg.content.startsWith("!watch-list ")) { 
+        
+        console.log("!!! watch list");
+        showWatchList(msg.channel);
     }
 })
 
