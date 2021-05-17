@@ -48,14 +48,18 @@ const startWatch = (address, label, channel) => {
 
     const { emitter } = blocknative.account(address)
     
-    emitter.on('txConfirmed', transaction => {
+    emitter.on('all', transaction => {
 
         var tx = {
             name: label,
+            status: transaction.status,
             hash: `[${transaction.hash}](${explorerLink}/tx/${transaction.hash})`,
             from: `[${transaction.from}](${explorerLink}/address/${transaction.from})`,
             to: `[${transaction.to}](${explorerLink}/address/${transaction.to})`,
             value: transaction.value,
+            timeStamp: transaction.timeStamp,
+            gasPriceGwei: transaction.gasPriceGwei,
+            contractCall: transaction.contractCall
             // input: transaction.input
         };
         var log = JSON.stringify(tx, null, 4);
@@ -76,7 +80,9 @@ const startWatch = (address, label, channel) => {
         const embed = new Discord.MessageEmbed()
         .setDescription(log);
         channel.send(embed);
-    })
+    });
+
+    channel.send(`Started watch on address ${address}`)
 }
 
 const stopWatchByAddress = (address, channel) => {
@@ -97,6 +103,8 @@ const stopWatchByAddress = (address, channel) => {
     blocknative.unsubscribe(address)
     labels.splice(index, 1);
     addresses.splice(index, 1);
+
+    channel.send(`Stopped watch on address ${address}`)
 }
 
 const stopWatchByLabel = (label, channel) => {
@@ -117,15 +125,17 @@ const stopWatchByLabel = (label, channel) => {
     blocknative.unsubscribe(address)
     labels.splice(index, 1);
     addresses.splice(index, 1);
+
+    channel.send(`Stopped watch on address ${address}`)
 }
 
 const showWatchList = (channel) => {
 
-    log = 'Watch List';
+    log = 'Watch List\n';
     for (var i = 0; i < addresses.length; i++) {
         log += addresses[i] + '\t ' + labels[i] + '\n';
     }
-    
+
     const embed = new Discord.MessageEmbed()
     .setDescription(log);
     channel.send(embed);
@@ -151,21 +161,20 @@ client.on("message", msg => {
         parts = msg.content.split(' ');
         startWatch(parts[1], parts[2], msg.channel);
     }
-    else if (msg.content.startsWith("!stopl ")) { 
+    else if (msg.content.startsWith("!unwatch ")) { 
         
-        console.log("!!! stop watch by label");
-        
-        parts = msg.content.split(' ');
-        stopWatchByLabel(parts[1], msg.channel);
-    }
-    else if (msg.content.startsWith("!stopa ")) { 
-        
-        console.log("!!! stop watch by address");
+        console.log("!!! stop watch");
         
         parts = msg.content.split(' ');
-        stopWatchByAddress(parts[1], msg.channel);
+
+        if (parts.length > 0) {
+            if (parts[1].startsWith('0x'))
+                stopWatchByAddress(parts[1], msg.channel);
+            else
+                stopWatchByLabel(parts[1], msg.channel);
+        }
     }
-    else if (msg.content.startsWith("!watch-list ")) { 
+    else if (msg.content == "!watch-list") { 
         
         console.log("!!! watch list");
         showWatchList(msg.channel);
