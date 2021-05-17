@@ -5,6 +5,7 @@ const WebSocket = require('ws');
 
 const INTERVAL = process.env.INTERVAL || 2000;
 const networkId = process.env.NETWORK_ID || '1';
+const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';
 
 // blocknative initialize
 
@@ -49,9 +50,9 @@ const startWatch = (address, label, channel) => {
     emitter.on('txConfirmed', transaction => {
 
         var tx = {
-            hash: `[${transaction.hash}](https://bscscan.com/tx/${transaction.hash})`,
-            from: `[${transaction.from}](https://bscscan.com/address/${transaction.from})`,
-            to: `[${transaction.to}](https://bscscan.com/address/${transaction.to})`,
+            hash: `[${transaction.hash}](${explorerLink}/tx/${transaction.hash})`,
+            from: `[${transaction.from}](${explorerLink}/address/${transaction.from})`,
+            to: `[${transaction.to}](${explorerLink}/address/${transaction.to})`,
             value: transaction.value,
             // input: transaction.input
         };
