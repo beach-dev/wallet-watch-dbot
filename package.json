@@ -14,6 +14,7 @@
     "bnc-sdk": "^3.3.3",
     "discord.js": "^12.5.2",
     "dotenv": "^8.2.0",
+    "mongoose": "^5.12.11",
     "node-fetch": "^2.6.1",
     "nodemon": "^2.0.7",
     "web3": "^1.3.6"

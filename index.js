@@ -4,10 +4,35 @@ const BlocknativeSdk = require('bnc-sdk');
 const WebSocket = require('ws');
 const Web3 = require('web3');
 
+var clientConnected = false;
+var dbConnected = false;
+
 const INTERVAL = process.env.INTERVAL || 2000;
 const networkId = process.env.NETWORK_ID || '1';
 const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';
 const TIMEOUT_ERC20_WATCH = process.env.TIMEOUT_ERC20_WATCH || 3000;
+const MONGODB_URL = process.env.MONGODB_URL || 'mongodb://localhost:27017/watch';
+
+const mongoose = require('mongoose');
+mongoose.connect(MONGODB_URL, {useNewUrlParser: true, useUnifiedTopology: true});
+const addressSchema = new mongoose.Schema({
+    address: String,
+    label: String
+});
+const Address = mongoose.model('address', addressSchema);
+
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', async function() {
+
+    console.log('db is connected!')
+
+    dbConnected = true;
+
+    if (clientConnected) {
+        initWatch();
+    }
+});
 
 // ----- WATCH ERC20 TOKEN ----
 const web3 = new Web3(new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/d806e5e933d34d399b4b3e5f7208e633'));
@@ -22,9 +47,6 @@ var checkErc20Status = false;
 var lowestBlock = undefined;
 
 // blocknative initialize
-
-var addresses = [];
-var labels = [];
 
 const options = {
     dappId: process.env.DAPP_ID,
@@ -123,21 +145,62 @@ const checkErc20 = async (channel) => {
 // ----- WATCH ERC20 TOKEN ---------
 
 
-const startWatch = (address, label, channel) => {
+const initWatch = async () => {
 
-    if (label && label.length > 0 && labels.indexOf(label) >= 0) {
-        channel.send('Duplicated label!');
-        return;
+    const addresses = await Address.find({});
+    for (var i = 0; i < addresses.length; i++) {
+
+        const addressEntry = addresses[i];
+        const address = addressEntry.address;
+        const label = addressEntry.label;
+
+        const { emitter } = blocknative.account(address)
+        
+        emitter.on('all', transaction => {
+
+            var tx = {
+                name: label,
+                status: transaction.status,
+                hash: `[${transaction.hash}](${explorerLink}/tx/${transaction.hash})`,
+                from: `[${transaction.from}](${explorerLink}/address/${transaction.from})`,
+                to: `[${transaction.to}](${explorerLink}/address/${transaction.to})`,
+                value: transaction.value,
+                timeStamp: transaction.timeStamp,
+                gasPriceGwei: transaction.gasPriceGwei,
+                contractCall: transaction.contractCall
+            };
+            var log = JSON.stringify(tx, null, 4);
+            console.log(transaction);
+            
+            const embed = new Discord.MessageEmbed()
+            .setDescription(log);
+            channel.send(embed);
+        });
+
+        channel.send(`Started watch on address ${address}`)
+    }
+}
+
+const startWatch = async (address, label, channel) => {
+
+    if (label && label.length > 0) {
+        const addressEntry = await Address.findOne({label: label});
+        if (addressEntry) {
+            channel.send('Duplicated label!');
+            return;
+        }
     }
 
-    if (addresses.indexOf(address) >= 0) {
+    const addressEntry = await Address.findOne({address: address});
+    if (addressEntry) {
         channel.send('Duplicated address!');
         return;
     }
     
-    var index = addresses.push(address) - 1;
+    
     label = label ? label : '';
-    labels[index] = label;
+    const newAddress = new Address({address: address, label: label});
+    newAddress.save();
 
     const { emitter } = blocknative.account(address)
     
@@ -165,55 +228,56 @@ const startWatch = (address, label, channel) => {
     channel.send(`Started watch on address ${address}`)
 }
 
-const stopWatchByAddress = (address, channel) => {
+const stopWatchByAddress = async (address, channel) => {
 
     if (!address || address.length == 0) {
         channel.send('Address is not valid!');
         return;
     }
-    var index = addresses.indexOf(address);
 
-    if (index < 0) {
+    const addressEntry = await Address.findOne({address: address});
+
+    if (!addressEntry) {
         channel.send('No registered address found!');
         return;
     }
 
-    var address = addresses[index];
+    var address = addressEntry.address;
     
     blocknative.unsubscribe(address)
-    labels.splice(index, 1);
-    addresses.splice(index, 1);
+    addressEntry.delete();
 
     channel.send(`Stopped watch on address ${address}`)
 }
 
-const stopWatchByLabel = (label, channel) => {
+const stopWatchByLabel = async (label, channel) => {
 
     if (!label || label.length == 0) {
         channel.send('Label is not valid!');
         return;
     }
-    var index = labels.indexOf(label);
+    const addressEntry = await Address.findOne({label: label});
 
-    if (index < 0) {
+    if (!addressEntry) {
         channel.send('No registered label found!');
         return;
     }
 
-    var address = addresses[index];
+    var address = addressEntry.address;
     
     blocknative.unsubscribe(address)
-    labels.splice(index, 1);
-    addresses.splice(index, 1);
+    addressEntry.delete();
 
     channel.send(`Stopped watch on address ${address}`)
 }
 
-const showWatchList = (channel) => {
+const showWatchList = async (channel) => {
+
+    const addresses = await Address.find({});
 
     log = 'Watch List\n';
     for (var i = 0; i < addresses.length; i++) {
-        log += addresses[i] + '\t ' + labels[i] + '\n';
+        log += addresses[i].address + '\t ' + addresses[i].label + '\n';
     }
 
     const embed = new Discord.MessageEmbed()
@@ -238,6 +302,10 @@ const stopWatchTokens = (channel) => {
 
 client.on("ready", () => {
     console.log("Watch Bot is ready")
+    clientConnected = true;
+    if (dbConnected) {
+        initWatch();
+    }
 })
 
 client.on("message", msg => {
