@@ -4,9 +4,6 @@ const BlocknativeSdk = require('bnc-sdk');
 const WebSocket = require('ws');
 const Web3 = require('web3');
 
-var clientConnected = false;
-var dbConnected = false;
-
 const INTERVAL = process.env.INTERVAL || 2000;
 const networkId = process.env.NETWORK_ID || '1';
 const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';
@@ -26,12 +23,6 @@ db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', async function() {
 
     console.log('db is connected!')
-
-    dbConnected = true;
-
-    if (clientConnected) {
-        initWatch();
-    }
 });
 
 // ----- WATCH ERC20 TOKEN ----
@@ -58,8 +49,7 @@ const options = {
 
 const blocknative = new BlocknativeSdk(options)
 
-var lastlog = '';
-var lasttime = new Date().getTime();
+var isRestored = false;
 
 const Discord = require('discord.js');
 const client = new Discord.Client({
@@ -145,7 +135,12 @@ const checkErc20 = async (channel) => {
 // ----- WATCH ERC20 TOKEN ---------
 
 
-const initWatch = async () => {
+const restoreWatch = async (channel) => {
+	
+	if (isRestored) {
+		channel.send('You have already restored');
+		return;
+	}
 
     const addresses = await Address.find({});
     for (var i = 0; i < addresses.length; i++) {
@@ -179,10 +174,17 @@ const initWatch = async () => {
 
         channel.send(`Started watch on address ${address}`)
     }
+	
+	isRestored = true;
 }
 
 const startWatch = async (address, label, channel) => {
 
+	if (!isRestored) {
+		channel.send('Please call restore first!');
+		return;
+	}
+	
     if (label && label.length > 0) {
         const addressEntry = await Address.findOne({label: label});
         if (addressEntry) {
@@ -230,6 +232,11 @@ const startWatch = async (address, label, channel) => {
 
 const stopWatchByAddress = async (address, channel) => {
 
+	if (!isRestored) {
+		channel.send('Please call restore first!');
+		return;
+	}
+	
     if (!address || address.length == 0) {
         channel.send('Address is not valid!');
         return;
@@ -252,6 +259,11 @@ const stopWatchByAddress = async (address, channel) => {
 
 const stopWatchByLabel = async (label, channel) => {
 
+	if (!isRestored) {
+		channel.send('Please call restore first!');
+		return;
+	}
+	
     if (!label || label.length == 0) {
         channel.send('Label is not valid!');
         return;
@@ -272,6 +284,11 @@ const stopWatchByLabel = async (label, channel) => {
 }
 
 const showWatchList = async (channel) => {
+
+	if (!isRestored) {
+		channel.send('Please call restore first!');
+		return;
+	}
 
     const addresses = await Address.find({});
 
@@ -302,10 +319,6 @@ const stopWatchTokens = (channel) => {
 
 client.on("ready", () => {
     console.log("Watch Bot is ready")
-    clientConnected = true;
-    if (dbConnected) {
-        initWatch();
-    }
 })
 
 client.on("message", msg => {
@@ -337,6 +350,11 @@ client.on("message", msg => {
         
         console.log("!!! watch list");
         showWatchList(msg.channel);
+    }
+    else if (msg.content == "!restore-watch") { 
+        
+        console.log("!!! restore watch");
+        restoreWatch(msg.channel);
     }
     else if (msg.content == "!watch-tokens") {
 
