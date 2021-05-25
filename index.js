@@ -257,31 +257,31 @@ client.on("message", msg => {
 
         msg.reply("I'm here!");
     }
-    else if (msg.content.startsWith("!watch ")) { 
+    // else if (msg.content.startsWith("!watch ")) { 
 
-        console.log("!!! start watch");
+    //     console.log("!!! start watch");
 
-        parts = msg.content.split(' ');
-        startWatch(parts[1], parts[2], msg.channel);
-    }
-    else if (msg.content.startsWith("!unwatch ")) { 
+    //     parts = msg.content.split(' ');
+    //     startWatch(parts[1], parts[2], msg.channel);
+    // }
+    // else if (msg.content.startsWith("!unwatch ")) { 
         
-        console.log("!!! stop watch");
+    //     console.log("!!! stop watch");
         
-        parts = msg.content.split(' ');
+    //     parts = msg.content.split(' ');
 
-        if (parts.length > 0) {
-            if (parts[1].startsWith('0x'))
-                stopWatchByAddress(parts[1], msg.channel);
-            else
-                stopWatchByLabel(parts[1], msg.channel);
-        }
-    }
-    else if (msg.content == "!watch-list") { 
+    //     if (parts.length > 0) {
+    //         if (parts[1].startsWith('0x'))
+    //             stopWatchByAddress(parts[1], msg.channel);
+    //         else
+    //             stopWatchByLabel(parts[1], msg.channel);
+    //     }
+    // }
+    // else if (msg.content == "!watch-list") { 
         
-        console.log("!!! watch list");
-        showWatchList(msg.channel);
-    }
+    //     console.log("!!! watch list");
+    //     showWatchList(msg.channel);
+    // }
     else if (msg.content == "!watch-tokens") {
 
         console.log("!!! start watch tokens")
