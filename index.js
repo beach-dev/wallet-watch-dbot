@@ -84,11 +84,12 @@ const checkErc20 = async (channel) => {
                 try {
                     symbol = await tokenContract.methods.symbol().call();
                 } catch(err) {
+                    //don't do anything here, just catch the error so program doesn't die
                 }
                 try {
                     decimals = await tokenContract.methods.decimals().call();
                 } catch(err) {
-                //don't do anything here, just catch the error so program doesn't die
+                    //don't do anything here, just catch the error so program doesn't die
                 }
                 try {
                     name = await tokenContract.methods.name().call();
@@ -152,22 +153,9 @@ const startWatch = (address, label, channel) => {
             timeStamp: transaction.timeStamp,
             gasPriceGwei: transaction.gasPriceGwei,
             contractCall: transaction.contractCall
-            // input: transaction.input
         };
         var log = JSON.stringify(tx, null, 4);
         console.log(transaction);
-
-        // lastlog += log + '\n';
-
-        // var currentTime = new Date().getTime();
-        // if (currentTime - lasttime > INTERVAL) {
-            
-        //     const embed = new Discord.MessageEmbed()
-        //     .setDescription(lastlog);
-        //     channel.send(embed);
-        //     lastlog = '';
-        //     lasttime = currentTime;
-        // }
         
         const embed = new Discord.MessageEmbed()
         .setDescription(log);
@@ -257,31 +245,31 @@ client.on("message", msg => {
 
         msg.reply("I'm here!");
     }
-    // else if (msg.content.startsWith("!watch ")) { 
+    else if (msg.content.startsWith("!watch ")) { 
 
-    //     console.log("!!! start watch");
+        console.log("!!! start watch");
 
-    //     parts = msg.content.split(' ');
-    //     startWatch(parts[1], parts[2], msg.channel);
-    // }
-    // else if (msg.content.startsWith("!unwatch ")) { 
+        parts = msg.content.split(' ');
+        startWatch(parts[1], parts[2], msg.channel);
+    }
+    else if (msg.content.startsWith("!unwatch ")) { 
         
-    //     console.log("!!! stop watch");
+        console.log("!!! stop watch");
         
-    //     parts = msg.content.split(' ');
+        parts = msg.content.split(' ');
 
-    //     if (parts.length > 0) {
-    //         if (parts[1].startsWith('0x'))
-    //             stopWatchByAddress(parts[1], msg.channel);
-    //         else
-    //             stopWatchByLabel(parts[1], msg.channel);
-    //     }
-    // }
-    // else if (msg.content == "!watch-list") { 
+        if (parts.length > 0) {
+            if (parts[1].startsWith('0x'))
+                stopWatchByAddress(parts[1], msg.channel);
+            else
+                stopWatchByLabel(parts[1], msg.channel);
+        }
+    }
+    else if (msg.content == "!watch-list") { 
         
-    //     console.log("!!! watch list");
-    //     showWatchList(msg.channel);
-    // }
+        console.log("!!! watch list");
+        showWatchList(msg.channel);
+    }
     else if (msg.content == "!watch-tokens") {
 
         console.log("!!! start watch tokens")
@@ -295,7 +283,3 @@ client.on("message", msg => {
 })
 
 client.login(process.env.BOT_TOKEN)
-
-
-// startWatch('0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F') // z3
-// startWatch('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2') // etherscan
