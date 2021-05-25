@@ -117,7 +117,7 @@ const checkErc20 = async (channel) => {
 
 
     if (checkErc20Status)
-        setTimeout(checkErc20, TIMEOUT_ERC20_WATCH);
+        setTimeout(() => {checkErc20(channel)}, TIMEOUT_ERC20_WATCH);
 }
 // ----- WATCH ERC20 TOKEN ---------
 
