@@ -6,7 +6,7 @@ const Web3 = require('web3');
 
 const INTERVAL = process.env.INTERVAL || 2000;
 const networkId = process.env.NETWORK_ID || '1';
-const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';\
+const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';
 const TIMEOUT_ERC20_WATCH = process.env.TIMEOUT_ERC20_WATCH || 3000;
 
 // ----- WATCH ERC20 TOKEN ----
@@ -48,6 +48,8 @@ const client = new Discord.Client({
 // ----- WATCH ERC20 TOKEN ---------
 const checkErc20 = async (channel) => {
 
+    console.log('checkErc20 start');
+
     if (!checkErc20Status)
         return;
     
@@ -56,18 +58,23 @@ const checkErc20 = async (channel) => {
     if (!lowestBlock)
         lowestBlock = highestBlock;
 
+    console.log(`lowest: ${lowestBlock}, highest: ${highestBlock}`);
+
     for (var x=lowestBlock; x < highestBlock + 1; x++) {
 
         var transactions = (await eth.getBlock(x)).transactions;
         console.log(transactions.length);
 
         for (var y=0; y < transactions.length; y++) {
+            console.log('test', 'transaction ' + y);
 
             var contract = await eth.getTransactionReceipt(transactions[y]);
             if (contract == null) continue;
 
             var contractAddr = contract.contractAddress;
             if (contractAddr != null) {
+
+                console.log('test', 'contract address ' + contractAddr);
 
                 tokenContract.options.address = contractAddr;
 
@@ -249,10 +256,6 @@ client.on("message", msg => {
     if (msg.content === "!watch-test") {
 
         msg.reply("I'm here!");
-        const embed = new Discord.MessageEmbed()
-        .setDescription('[Link text](http://example.com)');
-        msg.channel.send(embed)
-        // msg.channel.send('[Link text](http://example.com)')
     }
     else if (msg.content.startsWith("!watch ")) { 
 
