@@ -2,10 +2,24 @@ require('dotenv').config()
 const fetch = require('node-fetch')
 const BlocknativeSdk = require('bnc-sdk');
 const WebSocket = require('ws');
+const Web3 = require('web3');
 
 const INTERVAL = process.env.INTERVAL || 2000;
 const networkId = process.env.NETWORK_ID || '1';
-const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';
+const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';\
+const TIMEOUT_ERC20_WATCH = process.env.TIMEOUT_ERC20_WATCH || 3000;
+
+// ----- WATCH ERC20 TOKEN ----
+const web3 = new Web3(new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/d806e5e933d34d399b4b3e5f7208e633'));
+const eth = web3.eth;
+var tokenInterface = [{"type": "function","name": "name","constant": true,"inputs": [],"outputs": [{"name": "","type": "string"}]},{"type": "function","name": "decimals","constant": true,"inputs": [],"outputs": [{"name": "","type": "uint8"}]},{"type": "function","name": "balanceOf","constant": true,"inputs": [{"name": "","type": "address"}],"outputs": [{"name": "","type": "uint256"}]},{"type": "function","name": "symbol","constant": true,"inputs": [],"outputs": [{"name": "","type": "string"}]},{"type": "function","name": "transfer","constant": false,"inputs": [{"name": "_to","type": "address"},{"name": "_value","type": "uint256"}],"outputs": []},{"type": "constructor","inputs": [{"name": "_supply","type": "uint256"},{"name": "_name","type": "string"},{"name": "_decimals","type": "uint8"},{"name": "_symbol","type": "string"}]},{"name": "Transfer","type": "event","anonymous": false,"inputs": [{"indexed": true,"name": "from","type": "address"},{"indexed": true,"name": "to","type": "address"},{"indexed": false,"name": "value","type": "uint256"}]}];
+const tokenContract = new eth.Contract(tokenInterface);
+
+var checkErc20Status = false;
+// ----- WATCH ERC20 TOKEN ----
+
+
+var lowestBlock = undefined;
 
 // blocknative initialize
 
@@ -29,6 +43,77 @@ const Discord = require('discord.js');
 const client = new Discord.Client({
     partials: ['MESSAGE ']
 });
+
+
+// ----- WATCH ERC20 TOKEN ---------
+const checkErc20 = async (channel) => {
+
+    if (!checkErc20Status)
+        return;
+    
+    var highestBlock = (await eth.getBlock("latest")).number;
+
+    if (!lowestBlock)
+        lowestBlock = highestBlock;
+
+    for (var x=lowestBlock; x < highestBlock + 1; x++) {
+
+        var transactions = (await eth.getBlock(x)).transactions;
+        console.log(transactions.length);
+
+        for (var y=0; y < transactions.length; y++) {
+
+            var contract = await eth.getTransactionReceipt(transactions[y]);
+            if (contract == null) continue;
+
+            var contractAddr = contract.contractAddress;
+            if (contractAddr != null) {
+
+                tokenContract.options.address = contractAddr;
+
+                var symbol = "";
+                var decimals = "";
+                var name = "";
+                try {
+                    symbol = await tokenContract.methods.symbol().call();
+                } catch(err) {
+                }
+                try {
+                    decimals = await tokenContract.methods.decimals().call();
+                } catch(err) {
+                //don't do anything here, just catch the error so program doesn't die
+                }
+                try {
+                    name = await tokenContract.methods.name().call();
+                } catch(err) {
+                    //don't do anything here, just catch the error so program doesn't die
+                }
+                if (symbol != null && symbol != "" && name != null && name != "") {
+                    var log = "";
+                    log += "-----------\n";
+                    log += "Contract Address: " + contractAddr + '\n';
+                    log += "Name: " + name + '\n';
+                    log += "Symbol: " + symbol + '\n';
+                    log += "Decimals: " + decimals + '\n';
+                    log += "-----------";
+                    console.log(log);
+
+                    const embed = new Discord.MessageEmbed()
+                    .setDescription(log);
+                    channel.send(embed);
+                }
+            }
+        }
+    }
+
+    lowestBlock = highestBlock + 1;
+
+
+    if (checkErc20Status)
+        setTimeout(checkErc20, TIMEOUT_ERC20_WATCH);
+}
+// ----- WATCH ERC20 TOKEN ---------
+
 
 const startWatch = (address, label, channel) => {
 
@@ -141,6 +226,21 @@ const showWatchList = (channel) => {
     channel.send(embed);
 }
 
+const startWatchTokens = (channel) => {
+
+    checkErc20Status = true;
+    checkErc20(channel);
+
+    channel.send(`Started watch ERC20 tokens.`);
+}
+
+const stopWatchTokens = (channel) => {
+
+    checkErc20Status = false;
+
+    channel.send(`Stopped watch ERC20 tokens.`);
+}
+
 client.on("ready", () => {
     console.log("Watch Bot is ready")
 })
@@ -178,6 +278,16 @@ client.on("message", msg => {
         
         console.log("!!! watch list");
         showWatchList(msg.channel);
+    }
+    else if (msg.content == "!watch-tokens") {
+
+        console.log("!!! start watch tokens")
+        startWatchTokens(msg.channel);
+    }
+    else if (msg.content == "!unwatch-tokens") {
+
+        console.log("!!! stop watch tokens")
+        stopWatchTokens(msg.channel);
     }
 })
 
