@@ -115,22 +115,16 @@ const checkErc20 = async (channel) => {
                     //don't do anything here, just catch the error so program doesn't die
                 }
                 if (symbol != null && symbol != "" && name != null && name != "") {
-                    var log = "";
-                    log += "-----------\n";
-                    log += "Contract Address: " + contractAddr + '\n';
-                    log += "Name: " + name + '\n';
-                    log += "Symbol: " + symbol + '\n';
-                    log += "Decimals: " + decimals + '\n';
-                    log += "-----------";
-                    console.log(log);
 
                     var tx = {
                         'Name': name,
                         'Symbol': symbol,
                         'Decimals': decimals,
-                        'Contract Address': `[${contractAddr}](${explorerLink}/token/${contractAddr})`
+                        'Contract Address': `[${contractAddr}](${explorerLink}/token/${contractAddr})`,
+                        'Deployer Address': `[${contract.from}](${explorerLink}/address/${contract.from})`
                     };
-                    log = JSON.stringify(tx, null, 4);
+                    var log = JSON.stringify(tx, null, 4);
+                    console.log(log);
 
                     const embed = new Discord.MessageEmbed()
                     .setDescription(log);
