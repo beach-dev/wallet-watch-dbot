@@ -65,8 +65,11 @@ const checkErc20 = async (channel) => {
     if (!checkErc20Status)
         return;
     
-    var highestBlock = (await eth.getBlock("latest")).number;
+    var highestBlock = await eth.getBlock("latest");
+    if(!highestBlock)
+        return;
 
+    highestBlock = highestBlock.number
     if (!lowestBlock)
         lowestBlock = highestBlock;
 
@@ -74,7 +77,10 @@ const checkErc20 = async (channel) => {
 
     for (var x=lowestBlock; x < highestBlock + 1; x++) {
 
-        var transactions = (await eth.getBlock(x)).transactions;
+        var block = await eth.getBlock(x)
+        if(block == null)   continue;
+        
+        var transactions = block.transactions;
         console.log(transactions.length);
 
         for (var y=0; y < transactions.length; y++) {
