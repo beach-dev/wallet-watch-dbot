@@ -118,6 +118,14 @@ const checkErc20 = async (channel) => {
                     log += "-----------";
                     console.log(log);
 
+                    var tx = {
+                        'Name': name,
+                        'Symbol': symbol,
+                        'Decimals': decimals,
+                        'Contract Address': `[${contractAddr}](${explorerLink}/token/${contractAddr})`
+                    };
+                    log = JSON.stringify(tx, null, 4);
+
                     const embed = new Discord.MessageEmbed()
                     .setDescription(log);
                     channel.send(embed);
