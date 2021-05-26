@@ -7,6 +7,7 @@ const networkId = process.env.NETWORK_ID || '1';
 const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';
 const TIMEOUT_ERC20_WATCH = process.env.TIMEOUT_ERC20_WATCH || 3000;
 const MONGODB_URL = process.env.MONGODB_URL || 'mongodb://localhost:27017/watch';
+const ETHPROVIDER = process.env.ETHPROVIDER || 'https://eth-mainnet.alchemyapi.io/v2/W8LiSkJzpKaK6MK0f0APBRxTiBClQf47';
 
 const mongoose = require('mongoose');
 mongoose.connect(MONGODB_URL, {useNewUrlParser: true, useUnifiedTopology: true});
@@ -24,7 +25,7 @@ db.once('open', async function() {
 });
 
 // ----- WATCH ERC20 TOKEN ----
-const web3 = new Web3(new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/d806e5e933d34d399b4b3e5f7208e633'));
+const web3 = new Web3(new Web3.providers.HttpProvider(ETHPROVIDER));
 const eth = web3.eth;
 var tokenInterface = [{"type": "function","name": "name","constant": true,"inputs": [],"outputs": [{"name": "","type": "string"}]},{"type": "function","name": "decimals","constant": true,"inputs": [],"outputs": [{"name": "","type": "uint8"}]},{"type": "function","name": "balanceOf","constant": true,"inputs": [{"name": "","type": "address"}],"outputs": [{"name": "","type": "uint256"}]},{"type": "function","name": "symbol","constant": true,"inputs": [],"outputs": [{"name": "","type": "string"}]},{"type": "function","name": "transfer","constant": false,"inputs": [{"name": "_to","type": "address"},{"name": "_value","type": "uint256"}],"outputs": []},{"type": "constructor","inputs": [{"name": "_supply","type": "uint256"},{"name": "_name","type": "string"},{"name": "_decimals","type": "uint8"},{"name": "_symbol","type": "string"}]},{"name": "Transfer","type": "event","anonymous": false,"inputs": [{"indexed": true,"name": "from","type": "address"},{"indexed": true,"name": "to","type": "address"},{"indexed": false,"name": "value","type": "uint256"}]}];
 const tokenContract = new eth.Contract(tokenInterface);
