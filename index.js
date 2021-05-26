@@ -1,10 +1,8 @@
 require('dotenv').config()
-const fetch = require('node-fetch')
 const BlocknativeSdk = require('bnc-sdk');
 const WebSocket = require('ws');
 const Web3 = require('web3');
 
-const INTERVAL = process.env.INTERVAL || 2000;
 const networkId = process.env.NETWORK_ID || '1';
 const explorerLink = process.env.EXPLORER_LINK || 'https://etherscan.io';
 const TIMEOUT_ERC20_WATCH = process.env.TIMEOUT_ERC20_WATCH || 3000;
