@@ -43,7 +43,8 @@ const options = {
     networkId: parseInt(networkId),
     system: 'ethereum', // optional, defaults to ethereum
     ws: WebSocket, // only neccessary in server environments
-    name: 'Mempool Explorer' // optional, use when running multiple instances
+    name: 'Mempool Explorer', // optional, use when running multiple instances
+	onerror: function(error) { console.error(error); }
 };
 
 const blocknative = new BlocknativeSdk(options)
@@ -60,268 +61,268 @@ const client = new Discord.Client({
 const checkErc20 = async (channel) => {
 
     console.log('checkErc20 start');
+	try {
+		if (!checkErc20Status)
+			return;
+		
+		var highestBlock = await eth.getBlock("latest");
+		if(!highestBlock)
+			return;
 
-    if (!checkErc20Status)
-        return;
-    
-    var highestBlock = await eth.getBlock("latest");
-    if(!highestBlock)
-        return;
+		highestBlock = highestBlock.number
+		if (!lowestBlock)
+			lowestBlock = highestBlock;
 
-    highestBlock = highestBlock.number
-    if (!lowestBlock)
-        lowestBlock = highestBlock;
+		console.log(`lowest: ${lowestBlock}, highest: ${highestBlock}`);
 
-    console.log(`lowest: ${lowestBlock}, highest: ${highestBlock}`);
+		for (var x=lowestBlock; x < highestBlock + 1; x++) {
 
-    for (var x=lowestBlock; x < highestBlock + 1; x++) {
+			var block = await eth.getBlock(x)
+			if(block == null)   continue;
+			
+			var transactions = block.transactions;
+			console.log(transactions.length);
 
-        var block = await eth.getBlock(x)
-        if(block == null)   continue;
-        
-        var transactions = block.transactions;
-        console.log(transactions.length);
+			for (var y=0; y < transactions.length; y++) {
+				console.log('test', 'transaction ' + y);
 
-        for (var y=0; y < transactions.length; y++) {
-            console.log('test', 'transaction ' + y);
+				var contract = await eth.getTransactionReceipt(transactions[y]);
+				if (contract == null) continue;
 
-            var contract = await eth.getTransactionReceipt(transactions[y]);
-            if (contract == null) continue;
+				var contractAddr = contract.contractAddress;
+				if (contractAddr != null) {
 
-            var contractAddr = contract.contractAddress;
-            if (contractAddr != null) {
+					console.log('test', 'contract address ' + contractAddr);
 
-                console.log('test', 'contract address ' + contractAddr);
+					tokenContract.options.address = contractAddr;
 
-                tokenContract.options.address = contractAddr;
+					var symbol = "";
+					var decimals = "";
+					var name = "";
+					try {
+						symbol = await tokenContract.methods.symbol().call();
+					} catch(err) {
+						//don't do anything here, just catch the error so program doesn't die
+					}
+					try {
+						decimals = await tokenContract.methods.decimals().call();
+					} catch(err) {
+						//don't do anything here, just catch the error so program doesn't die
+					}
+					try {
+						name = await tokenContract.methods.name().call();
+					} catch(err) {
+						//don't do anything here, just catch the error so program doesn't die
+					}
+					if (symbol != null && symbol != "" && name != null && name != "") {
 
-                var symbol = "";
-                var decimals = "";
-                var name = "";
-                try {
-                    symbol = await tokenContract.methods.symbol().call();
-                } catch(err) {
-                    //don't do anything here, just catch the error so program doesn't die
-                }
-                try {
-                    decimals = await tokenContract.methods.decimals().call();
-                } catch(err) {
-                    //don't do anything here, just catch the error so program doesn't die
-                }
-                try {
-                    name = await tokenContract.methods.name().call();
-                } catch(err) {
-                    //don't do anything here, just catch the error so program doesn't die
-                }
-                if (symbol != null && symbol != "" && name != null && name != "") {
+						var tx = {
+							'Name': name,
+							'Symbol': symbol,
+							'Decimals': decimals,
+							'Contract Address': `[${contractAddr}](${explorerLink}/token/${contractAddr})`,
+							'Deployer Address': `[${contract.from}](${explorerLink}/address/${contract.from})`
+						};
+						var log = JSON.stringify(tx, null, 4);
+						console.log(log);
 
-                    var tx = {
-                        'Name': name,
-                        'Symbol': symbol,
-                        'Decimals': decimals,
-                        'Contract Address': `[${contractAddr}](${explorerLink}/token/${contractAddr})`,
-                        'Deployer Address': `[${contract.from}](${explorerLink}/address/${contract.from})`
-                    };
-                    var log = JSON.stringify(tx, null, 4);
-                    console.log(log);
+						const embed = new Discord.MessageEmbed()
+						.setDescription(log);
+						channel.send(embed);
+					}
+				}
+			}
+		}
 
-                    const embed = new Discord.MessageEmbed()
-                    .setDescription(log);
-                    channel.send(embed);
-                }
-            }
-        }
-    }
-
-    lowestBlock = highestBlock + 1;
-
+		lowestBlock = highestBlock + 1;
+	}
+	catch (exception) { console.error(exception) }
 
     if (checkErc20Status)
         setTimeout(() => {checkErc20(channel)}, TIMEOUT_ERC20_WATCH);
 }
 // ----- WATCH ERC20 TOKEN ---------
 
+const registerBlocknative = (address, label, channel) => {
+
+	const { emitter } = blocknative.account(address)
+	
+	emitter.on('all', transaction => {
+		console.log('emit 1');
+
+		var tx = {
+			name: label,
+			status: transaction.status,
+			hash: `[${transaction.hash}](${explorerLink}/tx/${transaction.hash})`,
+			from: `[${transaction.from}](${explorerLink}/address/${transaction.from})`,
+			to: `[${transaction.to}](${explorerLink}/address/${transaction.to})`,
+			value: transaction.value,
+			timeStamp: transaction.timeStamp,
+			gasPriceGwei: transaction.gasPriceGwei,
+			contractCall: transaction.contractCall
+		};
+		var log = JSON.stringify(tx, null, 4);
+		console.log(transaction);
+		
+		const embed = new Discord.MessageEmbed()
+		.setDescription(log);
+		channel.send(embed);
+	});
+	channel.send(`Started watch on address ${address}`)
+}
 
 const restoreWatch = async (channel) => {
 	
-	if (isRestored) {
-		channel.send('You have already restored');
-		return;
-	}
+	try {
+		if (isRestored) {
+			channel.send('You have already restored');
+			return;
+		}
 
-    const addresses = await Address.find({});
-    for (var i = 0; i < addresses.length; i++) {
+		const addresses = await Address.find({});
+		for (var i = 0; i < addresses.length; i++) {
 
-        const addressEntry = addresses[i];
-        const address = addressEntry.address;
-        const label = addressEntry.label;
-
-        const { emitter } = blocknative.account(address)
-        
-        emitter.on('all', transaction => {
-
-            var tx = {
-                name: label,
-                status: transaction.status,
-                hash: `[${transaction.hash}](${explorerLink}/tx/${transaction.hash})`,
-                from: `[${transaction.from}](${explorerLink}/address/${transaction.from})`,
-                to: `[${transaction.to}](${explorerLink}/address/${transaction.to})`,
-                value: transaction.value,
-                timeStamp: transaction.timeStamp,
-                gasPriceGwei: transaction.gasPriceGwei,
-                contractCall: transaction.contractCall
-            };
-            var log = JSON.stringify(tx, null, 4);
-            console.log(transaction);
-            
-            const embed = new Discord.MessageEmbed()
-            .setDescription(log);
-            channel.send(embed);
-        });
-
-        channel.send(`Started watch on address ${address}`)
-    }
-	
-	isRestored = true;
+			const addressEntry = addresses[i];
+			const address = addressEntry.address;
+			const label = addressEntry.label;
+			
+			registerBlocknative(address, label, channel);
+		}
+		
+		isRestored = true;
+	} catch (exception) { console.error(exception) }
 }
 
 const startWatch = async (address, label, channel) => {
 
-	if (!isRestored) {
-		channel.send('Please call restore first!');
-		return;
-	}
-	
-    if (label && label.length > 0) {
-        const addressEntry = await Address.findOne({label: label});
-        if (addressEntry) {
-            channel.send('Duplicated label!');
-            return;
-        }
-    }
+	try {
+		if (!isRestored) {
+			channel.send('Please call restore first!');
+			return;
+		}
+		
+		if (label && label.length > 0) {
+			const addressEntry = await Address.findOne({label: label});
+			if (addressEntry) {
+				channel.send('Duplicated label!');
+				return;
+			}
+		}
 
-    const addressEntry = await Address.findOne({address: address});
-    if (addressEntry) {
-        channel.send('Duplicated address!');
-        return;
-    }
-    
-    
-    label = label ? label : '';
-    const newAddress = new Address({address: address, label: label});
-    newAddress.save();
+		const addressEntry = await Address.findOne({address: address});
+		if (addressEntry) {
+			channel.send('Duplicated address!');
+			return;
+		}
+		
+		
+		label = label ? label : '';
+		const newAddress = new Address({address: address, label: label});
+		newAddress.save();
 
-    const { emitter } = blocknative.account(address)
-    
-    emitter.on('all', transaction => {
-
-        var tx = {
-            name: label,
-            status: transaction.status,
-            hash: `[${transaction.hash}](${explorerLink}/tx/${transaction.hash})`,
-            from: `[${transaction.from}](${explorerLink}/address/${transaction.from})`,
-            to: `[${transaction.to}](${explorerLink}/address/${transaction.to})`,
-            value: transaction.value,
-            timeStamp: transaction.timeStamp,
-            gasPriceGwei: transaction.gasPriceGwei,
-            contractCall: transaction.contractCall
-        };
-        var log = JSON.stringify(tx, null, 4);
-        console.log(transaction);
-        
-        const embed = new Discord.MessageEmbed()
-        .setDescription(log);
-        channel.send(embed);
-    });
-
-    channel.send(`Started watch on address ${address}`)
+		registerBlocknative(address, label, channel);
+	} catch (exception) { console.error(exception) }
 }
 
 const stopWatchByAddress = async (address, channel) => {
 
-	if (!isRestored) {
-		channel.send('Please call restore first!');
-		return;
-	}
-	
-    if (!address || address.length == 0) {
-        channel.send('Address is not valid!');
-        return;
-    }
+	try {
+		if (!isRestored) {
+			channel.send('Please call restore first!');
+			return;
+		}
+		
+		if (!address || address.length == 0) {
+			channel.send('Address is not valid!');
+			return;
+		}
 
-    const addressEntry = await Address.findOne({address: address});
+		const addressEntry = await Address.findOne({address: address});
 
-    if (!addressEntry) {
-        channel.send('No registered address found!');
-        return;
-    }
+		if (!addressEntry) {
+			channel.send('No registered address found!');
+			return;
+		}
 
-    var address = addressEntry.address;
-    
-    blocknative.unsubscribe(address)
-    addressEntry.delete();
+		var address = addressEntry.address;
+		
+		try {
+			blocknative.unsubscribe(address)
+		} catch (e) {}
+		addressEntry.delete();
 
-    channel.send(`Stopped watch on address ${address}`)
+		channel.send(`Stopped watch on address ${address}`)
+	} catch (exception) { console.error(exception) }
 }
 
 const stopWatchByLabel = async (label, channel) => {
-
-	if (!isRestored) {
-		channel.send('Please call restore first!');
-		return;
-	}
 	
-    if (!label || label.length == 0) {
-        channel.send('Label is not valid!');
-        return;
-    }
-    const addressEntry = await Address.findOne({label: label});
+	try {
+		if (!isRestored) {
+			channel.send('Please call restore first!');
+			return;
+		}
+		
+		if (!label || label.length == 0) {
+			channel.send('Label is not valid!');
+			return;
+		}
+		const addressEntry = await Address.findOne({label: label});
 
-    if (!addressEntry) {
-        channel.send('No registered label found!');
-        return;
-    }
+		if (!addressEntry) {
+			channel.send('No registered label found!');
+			return;
+		}
 
-    var address = addressEntry.address;
-    
-    blocknative.unsubscribe(address)
-    addressEntry.delete();
+		var address = addressEntry.address;
+		
+		try {
+			blocknative.unsubscribe(address)
+		} catch (e) {}
+		addressEntry.delete();
 
-    channel.send(`Stopped watch on address ${address}`)
+		channel.send(`Stopped watch on address ${address}`)
+	} catch (exception) { console.error(exception) }
 }
 
 const showWatchList = async (channel) => {
 
-	if (!isRestored) {
-		channel.send('Please call restore first!');
-		return;
-	}
+	try {
+		if (!isRestored) {
+			channel.send('Please call restore first!');
+			return;
+		}
 
-    const addresses = await Address.find({});
+		const addresses = await Address.find({});
 
-    log = 'Watch List\n';
-    for (var i = 0; i < addresses.length; i++) {
-        log += addresses[i].address + '\t ' + addresses[i].label + '\n';
-    }
+		log = 'Watch List\n';
+		for (var i = 0; i < addresses.length; i++) {
+			log += addresses[i].address + '\t ' + addresses[i].label + '\n';
+		}
 
-    const embed = new Discord.MessageEmbed()
-    .setDescription(log);
-    channel.send(embed);
+		const embed = new Discord.MessageEmbed()
+		.setDescription(log);
+		channel.send(embed);
+	} catch (exception) { console.error(exception) }
 }
 
 const startWatchTokens = (channel) => {
 
-    checkErc20Status = true;
-    checkErc20(channel);
+	try {
+		checkErc20Status = true;
+		checkErc20(channel);
 
-    channel.send(`Started watch ERC20 tokens.`);
+		channel.send(`Started watch ERC20 tokens.`);
+	} catch (exception) { console.error(exception) }
 }
 
 const stopWatchTokens = (channel) => {
 
-    checkErc20Status = false;
+	try {
+		checkErc20Status = false;
 
-    channel.send(`Stopped watch ERC20 tokens.`);
+		channel.send(`Stopped watch ERC20 tokens.`);
+	} catch (exception) { console.error(exception) }
 }
 
 client.on("ready", () => {
@@ -329,50 +330,58 @@ client.on("ready", () => {
 })
 
 client.on("message", msg => {
-    if (msg.content === "!watch-test") {
+	try {
+		if (msg.content === "!watch-test") {
 
-        msg.reply("I'm here!");
-    }
-    else if (msg.content.startsWith("!watch ")) { 
+			msg.reply("I'm here!");
+		}
+		else if (msg.content.startsWith("!watch ")) { 
 
-        console.log("!!! start watch");
+			console.log("!!! start watch");
 
-        parts = msg.content.split(' ');
-        startWatch(parts[1], parts[2], msg.channel);
-    }
-    else if (msg.content.startsWith("!unwatch ")) { 
-        
-        console.log("!!! stop watch");
-        
-        parts = msg.content.split(' ');
+			parts = msg.content.split(' ');
+			
+			if(parts.length > 1 && parts[1].startsWith('0x')) {
+				startWatch(parts[1], parts[2], msg.channel);
+			}
+			else {
+				msg.channel.send('Invalid command');
+			}
+		}
+		else if (msg.content.startsWith("!unwatch ")) { 
+			
+			console.log("!!! stop watch");
+			
+			parts = msg.content.split(' ');
 
-        if (parts.length > 0) {
-            if (parts[1].startsWith('0x'))
-                stopWatchByAddress(parts[1], msg.channel);
-            else
-                stopWatchByLabel(parts[1], msg.channel);
-        }
-    }
-    else if (msg.content == "!watch-list") { 
-        
-        console.log("!!! watch list");
-        showWatchList(msg.channel);
-    }
-    else if (msg.content == "!restore-watch") { 
-        
-        console.log("!!! restore watch");
-        restoreWatch(msg.channel);
-    }
-    else if (msg.content == "!watch-tokens") {
+			if (parts.length > 0) {
+				if (parts[1].startsWith('0x'))
+					stopWatchByAddress(parts[1], msg.channel);
+				else
+					stopWatchByLabel(parts[1], msg.channel);
+			}
+		}
+		else if (msg.content == "!watch-list") { 
+			
+			console.log("!!! watch list");
+			showWatchList(msg.channel);
+		}
+		else if (msg.content == "!restore-watch") { 
+			
+			console.log("!!! restore watch");
+			restoreWatch(msg.channel);
+		}
+		else if (msg.content == "!watch-tokens") {
 
-        console.log("!!! start watch tokens")
-        startWatchTokens(msg.channel);
-    }
-    else if (msg.content == "!unwatch-tokens") {
+			console.log("!!! start watch tokens")
+			startWatchTokens(msg.channel);
+		}
+		else if (msg.content == "!unwatch-tokens") {
 
-        console.log("!!! stop watch tokens")
-        stopWatchTokens(msg.channel);
-    }
+			console.log("!!! stop watch tokens")
+			stopWatchTokens(msg.channel);
+		}
+	} catch (exception) { console.error(exception) }
 })
 
 client.login(process.env.BOT_TOKEN)
