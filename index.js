@@ -309,6 +309,12 @@ const showWatchList = async (channel) => {
 const startWatchTokens = (channel) => {
 
 	try {
+		
+		if (checkErc20Status) {
+			channel.send('Already watching erc20 tokens!');
+			return;
+		}
+	
 		checkErc20Status = true;
 		checkErc20(channel);
 
