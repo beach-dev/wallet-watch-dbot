@@ -73,18 +73,18 @@ const checkErc20 = async (channel) => {
 		if (!lowestBlock)
 			lowestBlock = highestBlock;
 
-		console.log(`lowest: ${lowestBlock}, highest: ${highestBlock}`);
-
 		for (var x=lowestBlock; x < highestBlock + 1; x++) {
+
+			console.log(`lowest: ${lowestBlock}, highest: ${highestBlock}, current: ${x}`);
 
 			var block = await eth.getBlock(x)
 			if(block == null)   continue;
 			
 			var transactions = block.transactions;
-			console.log(transactions.length);
+			console.log('transaction length: ' + transactions.length);
 
 			for (var y=0; y < transactions.length; y++) {
-				console.log('test', 'transaction ' + y);
+				console.log(`block: ${x}, transaction: ${y}`);
 
 				if (!checkErc20Status) {
 					return;
@@ -96,7 +96,7 @@ const checkErc20 = async (channel) => {
 				var contractAddr = contract.contractAddress;
 				if (contractAddr != null) {
 
-					console.log('test', 'contract address ' + contractAddr);
+					console.log('contract address ' + contractAddr);
 
 					tokenContract.options.address = contractAddr;
 
