@@ -15,14 +15,14 @@ const addressSchema = new mongoose.Schema({
     address: String,
     label: String
 });
+const settingSchema = new mongoose.Schema({
+	name: String,
+    value: String,
+});
 const Address = mongoose.model('address', addressSchema);
+const Setting = mongoose.model('setting', settingSchema);
 
 const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', async function() {
-
-    console.log('db is connected!')
-});
 
 // ----- WATCH ERC20 TOKEN ----
 const web3 = new Web3(new Web3.providers.HttpProvider(ETHPROVIDER));
@@ -85,6 +85,10 @@ const checkErc20 = async (channel) => {
 
 			for (var y=0; y < transactions.length; y++) {
 				console.log('test', 'transaction ' + y);
+
+				if (!checkErc20Status) {
+					return;
+				}
 
 				var contract = await eth.getTransactionReceipt(transactions[y]);
 				if (contract == null) continue;
@@ -315,6 +319,7 @@ const startWatchTokens = (channel) => {
 			return;
 		}
 	
+		lowestBlock = undefined;
 		checkErc20Status = true;
 		checkErc20(channel);
 
@@ -330,6 +335,47 @@ const stopWatchTokens = (channel) => {
 		channel.send(`Stopped watch ERC20 tokens.`);
 	} catch (exception) { console.error(exception) }
 }
+
+
+const setWeb3Provider = async (url, channel) => {
+
+	var bStatus = web3.setProvider(new Web3.providers.HttpProvider(url));
+
+	if (bStatus == true) {
+
+		const settingEntry = await Setting.findOne({name: 'providerUrl'});
+		settingEntry.value = url;
+		settingEntry.save();
+	}
+}
+
+const getWeb3Provider = async (channel) => {
+	
+	const settingEntry = await Setting.findOne({name: 'providerUrl'});
+	if (settingEntry) {
+		channel.send('Provider: ' + settingEntry.value);
+	}
+	else {
+		channel.send('No provider information is saved on db.')
+	}
+}
+
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', async function() {
+
+    console.log('db is connected!')
+	const settingEntry = await Setting.findOne({name: 'providerUrl'});
+
+	if (settingEntry) {
+		web3.setProvider(new Web3.providers.HttpProvider(settingEntry.value));
+		console.log('loaded db provider and set');
+	}
+	else {		
+		const newSetting = new Address({name: 'providerUrl', value: ETHPROVIDER});
+		newSetting.save();
+		console.log('added provider entry in Settings collection');
+	}
+});
 
 client.on("ready", () => {
     console.log("Watch Bot is ready")
@@ -386,6 +432,24 @@ client.on("message", msg => {
 
 			console.log("!!! stop watch tokens")
 			stopWatchTokens(msg.channel);
+		}
+		else if (msg.content.startsWith("!set-provider ")) { 
+
+			console.log("!!! set provider");
+
+			parts = msg.content.split(' ');
+			
+			if(parts.length > 1 && parts[1].startsWith('https://')) {
+				setWeb3Provider(parts[1], channel);
+			}
+			else {
+				msg.channel.send('Invalid command');
+			}
+		}
+		else if (msg.content == "!get-provider") {
+
+			console.log("!!! get provider")
+			getWeb3Provider(msg.channel);
 		}
 	} catch (exception) { console.error(exception) }
 })
