@@ -346,6 +346,11 @@ const setWeb3Provider = async (url, channel) => {
 		const settingEntry = await Setting.findOne({name: 'providerUrl'});
 		settingEntry.value = url;
 		settingEntry.save();
+
+		channel.send('Provider is updated!');
+	}
+	else {
+		channel.send('Error occured in provide update');
 	}
 }
 
@@ -371,7 +376,7 @@ db.once('open', async function() {
 		console.log('loaded db provider and set');
 	}
 	else {		
-		const newSetting = new Address({name: 'providerUrl', value: ETHPROVIDER});
+		const newSetting = new Setting({name: 'providerUrl', value: ETHPROVIDER});
 		newSetting.save();
 		console.log('added provider entry in Settings collection');
 	}
@@ -440,7 +445,7 @@ client.on("message", msg => {
 			parts = msg.content.split(' ');
 			
 			if(parts.length > 1 && parts[1].startsWith('https://')) {
-				setWeb3Provider(parts[1], channel);
+				setWeb3Provider(parts[1], msg.channel);
 			}
 			else {
 				msg.channel.send('Invalid command');
