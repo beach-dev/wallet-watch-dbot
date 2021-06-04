@@ -13,7 +13,8 @@ const mongoose = require('mongoose');
 mongoose.connect(MONGODB_URL, {useNewUrlParser: true, useUnifiedTopology: true});
 const addressSchema = new mongoose.Schema({
     address: String,
-    label: String
+    label: String,
+	channelId: String,
 });
 const settingSchema = new mongoose.Schema({
 	name: String,
@@ -49,7 +50,7 @@ const options = {
 
 const blocknative = new BlocknativeSdk(options)
 
-var isRestored = false;
+var isRestored = [];
 
 const Discord = require('discord.js');
 const client = new Discord.Client({
@@ -178,12 +179,12 @@ const registerBlocknative = (address, label, channel) => {
 const restoreWatch = async (channel) => {
 	
 	try {
-		if (isRestored) {
+		if (isRestored[channel.id] == true) {
 			channel.send('You have already restored');
 			return;
 		}
 
-		const addresses = await Address.find({});
+		const addresses = await Address.find({channelId: channel.id});
 		for (var i = 0; i < addresses.length; i++) {
 
 			const addressEntry = addresses[i];
@@ -193,14 +194,14 @@ const restoreWatch = async (channel) => {
 			registerBlocknative(address, label, channel);
 		}
 		
-		isRestored = true;
+		isRestored[channel.id] = true
 	} catch (exception) { console.error(exception) }
 }
 
 const startWatch = async (address, label, channel) => {
 
 	try {
-		if (!isRestored) {
+		if (isRestored[channel.id] == true) {
 			channel.send('Please call restore first!');
 			return;
 		}
@@ -221,7 +222,7 @@ const startWatch = async (address, label, channel) => {
 		
 		
 		label = label ? label : '';
-		const newAddress = new Address({address: address, label: label});
+		const newAddress = new Address({address: address, label: label, channelId: channel.id});
 		newAddress.save();
 
 		registerBlocknative(address, label, channel);
@@ -231,7 +232,7 @@ const startWatch = async (address, label, channel) => {
 const stopWatchByAddress = async (address, channel) => {
 
 	try {
-		if (!isRestored) {
+		if (isRestored[channel.id] == true) {
 			channel.send('Please call restore first!');
 			return;
 		}
@@ -262,7 +263,7 @@ const stopWatchByAddress = async (address, channel) => {
 const stopWatchByLabel = async (label, channel) => {
 	
 	try {
-		if (!isRestored) {
+		if (isRestored[channel.id] == true) {
 			channel.send('Please call restore first!');
 			return;
 		}
@@ -292,7 +293,7 @@ const stopWatchByLabel = async (label, channel) => {
 const showWatchList = async (channel) => {
 
 	try {
-		if (!isRestored) {
+		if (isRestored[channel.id] == true) {
 			channel.send('Please call restore first!');
 			return;
 		}
@@ -301,7 +302,9 @@ const showWatchList = async (channel) => {
 
 		log = 'Watch List\n';
 		for (var i = 0; i < addresses.length; i++) {
-			log += addresses[i].address + '\t ' + addresses[i].label + '\n';
+			if (addresses[i].channelId == channel.id) {
+				log += addresses[i].address + '\t ' + addresses[i].label + '\n';
+			}
 		}
 
 		const embed = new Discord.MessageEmbed()
