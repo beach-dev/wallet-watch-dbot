@@ -201,7 +201,7 @@ const restoreWatch = async (channel) => {
 const startWatch = async (address, label, channel) => {
 
 	try {
-		if (isRestored[channel.id] == true) {
+		if (isRestored[channel.id] != true) {
 			channel.send('Please call restore first!');
 			return;
 		}
@@ -232,7 +232,7 @@ const startWatch = async (address, label, channel) => {
 const stopWatchByAddress = async (address, channel) => {
 
 	try {
-		if (isRestored[channel.id] == true) {
+		if (isRestored[channel.id] != true) {
 			channel.send('Please call restore first!');
 			return;
 		}
@@ -263,7 +263,7 @@ const stopWatchByAddress = async (address, channel) => {
 const stopWatchByLabel = async (label, channel) => {
 	
 	try {
-		if (isRestored[channel.id] == true) {
+		if (isRestored[channel.id] != true) {
 			channel.send('Please call restore first!');
 			return;
 		}
@@ -293,7 +293,7 @@ const stopWatchByLabel = async (label, channel) => {
 const showWatchList = async (channel) => {
 
 	try {
-		if (isRestored[channel.id] == true) {
+		if (isRestored[channel.id] != true) {
 			channel.send('Please call restore first!');
 			return;
 		}
