@@ -78,67 +78,68 @@ const checkErc20 = async (channel) => {
 
 			console.log(`lowest: ${lowestBlock}, highest: ${highestBlock}, current: ${x}`);
 
-			var block = await eth.getBlock(x)
-			if(block == null)   continue;
+			eth.getBlock(x).then((block) => {
+
+				if(block == null) return;
 			
-			var transactions = block.transactions;
-			console.log('transaction length: ' + transactions.length);
-
-			for (var y=0; y < transactions.length; y++) {
-				console.log(`block: ${x}, transaction: ${y}`);
-
-				if (!checkErc20Status) {
-					return;
+				var transactions = block.transactions;
+				console.log('transaction length: ' + transactions.length);
+	
+				for (var y=0; y < transactions.length; y++) {
+					console.log(`block: ${x}, transaction: ${y}`);
+	
+					if (!checkErc20Status) {
+						return;
+					}
+	
+					var contract = await eth.getTransactionReceipt(transactions[y]);
+					if (contract == null) continue;
+	
+					var contractAddr = contract.contractAddress;
+					if (contractAddr != null) {
+	
+						console.log('contract address ' + contractAddr);
+	
+						tokenContract.options.address = contractAddr;
+	
+						var symbol = "";
+						var decimals = "";
+						var name = "";
+						try {
+							symbol = await tokenContract.methods.symbol().call();
+						} catch(err) {
+							//don't do anything here, just catch the error so program doesn't die
+						}
+						try {
+							decimals = await tokenContract.methods.decimals().call();
+						} catch(err) {
+							//don't do anything here, just catch the error so program doesn't die
+						}
+						try {
+							name = await tokenContract.methods.name().call();
+						} catch(err) {
+							//don't do anything here, just catch the error so program doesn't die
+						}
+						if (symbol != null && symbol != "" && name != null && name != "") {
+	
+							var tx = {
+								'Name': name,
+								'Symbol': symbol,
+								'Decimals': decimals,
+								'Contract Address': `[${contractAddr}](${explorerLink}/token/${contractAddr})`,
+								'Deployer Address': `[${contract.from}](${explorerLink}/address/${contract.from})`
+							};
+							var log = JSON.stringify(tx, null, 4);
+							console.log(log);
+	
+							const embed = new Discord.MessageEmbed()
+							.setDescription(log);
+							channel.send(embed);
+						}
+					}
 				}
-
-				var contract = await eth.getTransactionReceipt(transactions[y]);
-				if (contract == null) continue;
-
-				var contractAddr = contract.contractAddress;
-				if (contractAddr != null) {
-
-					console.log('contract address ' + contractAddr);
-
-					tokenContract.options.address = contractAddr;
-
-					var symbol = "";
-					var decimals = "";
-					var name = "";
-					try {
-						symbol = await tokenContract.methods.symbol().call();
-					} catch(err) {
-						//don't do anything here, just catch the error so program doesn't die
-					}
-					try {
-						decimals = await tokenContract.methods.decimals().call();
-					} catch(err) {
-						//don't do anything here, just catch the error so program doesn't die
-					}
-					try {
-						name = await tokenContract.methods.name().call();
-					} catch(err) {
-						//don't do anything here, just catch the error so program doesn't die
-					}
-					if (symbol != null && symbol != "" && name != null && name != "") {
-
-						var tx = {
-							'Name': name,
-							'Symbol': symbol,
-							'Decimals': decimals,
-							'Contract Address': `[${contractAddr}](${explorerLink}/token/${contractAddr})`,
-							'Deployer Address': `[${contract.from}](${explorerLink}/address/${contract.from})`
-						};
-						var log = JSON.stringify(tx, null, 4);
-						console.log(log);
-
-						const embed = new Discord.MessageEmbed()
-						.setDescription(log);
-						channel.send(embed);
-					}
-				}
-			}
+			})
 		}
-
 		lowestBlock = highestBlock + 1;
 	}
 	catch (exception) { console.error(exception) }
