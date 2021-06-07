@@ -447,7 +447,7 @@ client.on("message", msg => {
 
 			parts = msg.content.split(' ');
 			
-			if(parts.length > 1 && parts[1].startsWith('https://')) {
+			if(parts.length > 1 && (parts[1].startsWith('https://') || parts[1].startsWith('http://'))) {
 				setWeb3Provider(parts[1], msg.channel);
 			}
 			else {
