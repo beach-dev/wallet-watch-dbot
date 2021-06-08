@@ -78,7 +78,7 @@ const checkErc20 = async (channel) => {
 
 			console.log(`lowest: ${lowestBlock}, highest: ${highestBlock}, current: ${x}`);
 
-			eth.getBlock(x).then((block) => {
+			eth.getBlock(x).then(async (block) => {
 
 				if(block == null) return;
 			
